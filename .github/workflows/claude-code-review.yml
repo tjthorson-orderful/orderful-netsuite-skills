@@ -13,7 +13,9 @@ jobs:
         if: |
             github.event.label.name == 'claude-review' &&
             github.event.pull_request.draft == false &&
-            !endsWith(github.event.pull_request.user.login, '[bot]')
+            !endsWith(github.event.pull_request.user.login, '[bot]') &&
+            contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'),
+                     github.event.sender.author_association)
         runs-on: ubuntu-latest
         timeout-minutes: 30
         permissions:
@@ -62,7 +64,7 @@ jobs:
                   echo "Stripped all PR-controlled Claude config paths from pr-head."
 
             - name: Run Claude Code Review
-              uses: anthropics/claude-code-action@51ea8ea73a139f2a74ff649e3092c25a904aed7e # v1.0.123
+              uses: anthropics/claude-code-action@c9d66afb1788e701c57d58842e324dca17fd276e # v1.0.129
               env:
                   PR_NUMBER: ${{ github.event.pull_request.number }}
                   REPO: ${{ github.repository }}
@@ -70,6 +72,9 @@ jobs:
                   BASE_SHA: ${{ github.event.pull_request.base.sha }}
               with:
                   claude_code_oauth_token: ${{ secrets.ORDERFUL_BOT_CLAUDE_CODE_OAUTH_TOKEN }}
+                  # Bypass the Anthropic OIDC exchange, which 401s on
+                  # pull_request_target events. See anthropics/claude-code-action#713.
+                  github_token: ${{ secrets.GITHUB_TOKEN }}
                   use_sticky_comment: true
                   include_fix_links: false
                   prompt: |
